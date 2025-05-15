@@ -2,8 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
+
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 app
-  .use(cors())
+  .use(cors(corsOptions))
   .use(express.json())
   .use(express.urlencoded({ extended: true }))
   .use('/', require('./routes'));
