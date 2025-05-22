@@ -1,4 +1,5 @@
 const db = require('../models');
+const createError = require('http-errors');
 const Temple = db.temples;
 
 const apiKey =
@@ -23,65 +24,61 @@ exports.create = (req, res) => {
   temple
     .save(temple)
     .then((data) => {
-      res.send(data);
+      return res.send(data);
     })
     .catch((err) => {
-      res.status(500).send({
+      return res.status(500).send({
         message:
           err.message || 'Some error occurred while creating the Temple.',
       });
     });
 };
 
-exports.findAll = (req, res) => {
-  //#swagger.tags=['Tempes']
-  console.log(req.header('apiKey'));
-  if (req.header('apiKey') === apiKey) {
-    Temple.find(
-      {},
-      {
-        temple_id: 1,
-        name: 1,
-        location: 1,
-        dedicated: 1,
-        additionalInfo: 1,
-        _id: 0,
-      }
-    )
-      .then((data) => {
-        res.send(data);
-      })
-      .catch((err) => {
-        res.status(500).send({
-          message:
-            err.message || 'Some error occurred while retrieving temples.',
-        });
-      });
-  } else {
-    res.send('Invalid apiKey, please read the documentation.');
-  }
-};
+exports.findAll = async (req, res, next) => {
+  try {
+    //#swagger.tags=['Tempes']
+    console.log(req.header('apiKey'));
+    if (req.header('apiKey') !== apiKey) {
+      throw createError(422, 'Invalid apiKey, please read the documentation.')
+    }
+    const response = await Temple.find({},
+        {
+          temple_id: 1,
+          name: 1,
+          location: 1,
+          dedicated: 1,
+          additionalInfo: 1,
+          _id: 0,
+        }
+      )
+
+    if (response.length <= 0) throw createError(404, 'Not Data found');
+
+    return res
+            .status(200)
+            .json(response);
+
+  } catch (err) {
+    return next(err);
+  };
+}
 
 // Find a single Temple with an id
-exports.findOne = (req, res) => {
-  //#swagger.tags=['Tempes']
-  const temple_id = req.params.temple_id;
-  if (req.header('apiKey') === apiKey) {
-    Temple.find({ temple_id: temple_id })
-      .then((data) => {
-        if (!data)
-          res
-            .status(404)
-            .send({ message: 'Not found Temple with id ' + temple_id });
-        else res.send(data[0]);
-      })
-      .catch((err) => {
-        res.status(500).send({
-          message: 'Error retrieving Temple with temple_id=' + temple_id,
-        });
-      });
-  } else {
-    res.send('Invalid apiKey, please read the documentation.');
+exports.findOne = async (req, res, next) => {
+  try {
+    //#swagger.tags=['Tempes']
+    const temple_id = req.params.temple_id;
+    if (req.header('apiKey') !== apiKey) {
+      throw createError(422, 'Invalid apiKey, please read the documentation.')
+    }
+    const response = await Temple.find({ temple_id: temple_id });
+    if (!respnse || response.length <= 0) throw createError(404, 'Not found Temple with id ' + temple_id);
+
+    return res
+            .status(200)
+            .json(response[0]);
+  } catch (err) {
+    return next(err);
   }
 };
 
@@ -99,40 +96,33 @@ exports.update = (req, res) => {
   Temple.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
     .then((data) => {
       if (!data) {
-        res.status(404).send({
+        return res.status(404).send({
           message: `Cannot update Temple with id=${id}. Maybe Temple was not found!`,
         });
-      } else res.send({ message: 'Temple was updated successfully.' });
+      } else return res.send({ message: 'Temple was updated successfully.' });
     })
     .catch((err) => {
-      res.status(500).send({
+      return res.status(500).send({
         message: 'Error updating Temple with id=' + id,
       });
     });
 };
 
  // Delete a Temple with the specified id in the request
-exports.delete = (req, res) => {
-  //#swagger.tags=['Tempes']
-  const id = req.params.id;
+exports.delete = async (req, res, next) => {
+  try {
+    //#swagger.tags=['Tempes']
+    const id = req.params.id;
+  
+    const reaponse = await Temple.findByIdAndRemove(id);
 
-  Temple.findByIdAndRemove(id)
-    .then((data) => {
-      if (!data) {
-        res.status(404).send({
-          message: `Cannot delete Temple with id=${id}. Maybe Temple was not found!`,
-        });
-      } else {
-        res.send({
-          message: 'Temple was deleted successfully!',
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Could not delete Temple with id=' + id,
-      });
-    });
+    if (!response) throw createError(404, `Cannot delete Temple with id=${id}. Maybe Temple was not found!`);
+
+    return res.status(202).send('Temple was deleted successfully!');
+
+  } catch (err) {
+    return next(err);
+  }
 };
 
  // Delete all Temples from the database.
@@ -140,12 +130,12 @@ exports.deleteAll = (req, res) => {
   //#swagger.tags=['Tempes']
   Temple.deleteMany({})
     .then((data) => {
-      res.send({
+      return res.send({
         message: `${data.deletedCount} Temples were deleted successfully!`,
       });
     })
     .catch((err) => {
-      res.status(500).send({
+      return res.status(500).send({
         message:
           err.message || 'Some error occurred while removing all temple.',
       });
@@ -157,10 +147,10 @@ exports.findAllPublished = (req, res) => {
   //#swagger.tags=['Tempes']
   Temple.find({ published: true })
     .then((data) => {
-      res.send(data);
+      return res.send(data);
     })
     .catch((err) => {
-      res.status(500).send({
+      return res.status(500).send({
         message:
           err.message || 'Some error occurred while retrieving temple.',
       });
