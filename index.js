@@ -13,7 +13,12 @@ app
   .use(cors(corsOptions))
   .use(express.json())
   .use(express.urlencoded({ extended: true }))
-  .use('/', require('./routes'));
+  .use('/', require('./routes'))
+  .use((err, req, res, next) => {
+    res
+      .status(err.status || 500)
+      .json({ error: { status: err.status || 500, message: err.message }})
+  });
 
 const db = require('./models');
 db.mongoose
